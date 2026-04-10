@@ -690,6 +690,7 @@
         <h1>MBTI已经过时，SBTI来了。</h1>
         <div class="hero-actions hero-actions-single">
           <button id="startBtn" class="btn-primary">开始测试</button>
+          <button id="lastResultBtn" class="btn-secondary" style="display:none;">查看上次结果</button>
         </div>
         <div style="padding-top: 2rem; display: flex; flex-direction: column;">
           <span>
@@ -1691,8 +1692,7 @@
       }).join('');
     }
 
-    function renderResult() {
-      const result = computeResult();
+    function showResultUI(result) {
       const type = result.finalType;
 
       document.getElementById('resultModeKicker').textContent = result.modeKicker;
@@ -1722,6 +1722,54 @@
       showScreen('result');
     }
 
+    function saveResult(result) {
+      const data = {
+        timestamp: Date.now(),
+        rawScores: result.rawScores,
+        levels: result.levels,
+        finalType: { code: result.finalType.code, cn: result.finalType.cn, intro: result.finalType.intro, desc: result.finalType.desc },
+        modeKicker: result.modeKicker,
+        badge: result.badge,
+        sub: result.sub,
+        special: result.special
+      };
+      try { localStorage.setItem('sbti_last_result', JSON.stringify(data)); } catch (e) {}
+      updateLastResultBtn();
+    }
+
+    function loadSavedResult() {
+      try {
+        const raw = localStorage.getItem('sbti_last_result');
+        if (!raw) return null;
+        return JSON.parse(raw);
+      } catch (e) { return null; }
+    }
+
+    function updateLastResultBtn() {
+      const btn = document.getElementById('lastResultBtn');
+      const saved = loadSavedResult();
+      if (saved) {
+        const date = new Date(saved.timestamp);
+        const dateStr = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')} ${String(date.getHours()).padStart(2,'0')}:${String(date.getMinutes()).padStart(2,'0')}`;
+        btn.textContent = `查看上次结果（${dateStr}）`;
+        btn.style.display = '';
+      } else {
+        btn.style.display = 'none';
+      }
+    }
+
+    function showSavedResult() {
+      const saved = loadSavedResult();
+      if (!saved) return;
+      showResultUI(saved);
+    }
+
+    function renderResult() {
+      const result = computeResult();
+      saveResult(result);
+      showResultUI(result);
+    }
+
     function startTest(preview = false) {
       app.previewMode = preview;
       app.answers = {};
@@ -1737,10 +1785,13 @@
     }
 
     document.getElementById('startBtn').addEventListener('click', () => startTest(false));
+    document.getElementById('lastResultBtn').addEventListener('click', showSavedResult);
     document.getElementById('backIntroBtn').addEventListener('click', () => showScreen('intro'));
     document.getElementById('submitBtn').addEventListener('click', renderResult);
     document.getElementById('restartBtn').addEventListener('click', () => startTest(false));
     document.getElementById('toTopBtn').addEventListener('click', () => showScreen('intro'));
+
+    updateLastResultBtn();
   </script>
 
 </body>
